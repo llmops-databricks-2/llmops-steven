@@ -59,6 +59,11 @@ suspension after five idle minutes. Creating extra branches or computes can incr
 
 - `src/arxiv_curator/`: starts with `config.py`, which loads `project_config.yml`.
   Add the other course modules as you work through the lectures.
+- `src/vehicle_rules/`: the course project, an assistant for Dutch vehicle rules, described in
+  `docs/use_case.md`. Its `config.py` combines an environment's section of `project_config.yml`
+  with the `vehicle_rules` section. `uv run python -m vehicle_rules.ingest` downloads the
+  regulations in force into `data/` (ignored by git), with one JSON line per article next to each
+  XML file.
 - `lecture_1/`, `lecture_2/` and so on, when you add them: copy a lecture's folder from the course
   code as it is, to the root of this repo, where its notebooks find `project_config.yml` one level up.
   Commit it with the hooks installed (below): the first commit stops once, after the hooks have
