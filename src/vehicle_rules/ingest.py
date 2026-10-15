@@ -2,9 +2,10 @@
 
 Each regulation's XML goes to bwb/ in the project volume, and each article to a row of the
 regulation_articles table. Where the volume holds an English translation of that version, in
-en/{bwb_id}_{version}.en.md, its articles fill text_en.
+en/{bwb_id}_{version}.en.md, its articles fill text_en. That translation is not made here: it was
+made once, by hand with Claude, for the purposes of the course, and covers one version only.
 
-Run it in a workspace notebook, or from the repo root through databricks-connect:
+Run it as the ingest job (resources/ingest.job.yml), or from the repo root through databricks-connect:
 `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`.
 """
 
@@ -18,7 +19,7 @@ from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import NotFound
 from pyspark.sql import SparkSession
 
-from vehicle_rules.config import load_config
+from vehicle_rules.config import get_env, load_config
 
 BWB_URL = "https://repository.officiele-overheidspublicaties.nl/bwb"
 # Elements rendered by their parent (numbers, headings) or not at all (version history, table layout).
@@ -171,9 +172,9 @@ def spark_session() -> SparkSession:
     return DatabricksSession.builder.serverless().getOrCreate()
 
 
-def main() -> None:
+def main(env: str = "dev") -> None:
     """Ingest the configured regulations into the project volume and the articles table."""
-    config = load_config()
+    config = load_config(env=env)
     workspace = WorkspaceClient()
     volume = f"/Volumes/{config.catalog}/{config.schema}/{config.volume}"
     workspace.files.create_directory(f"{volume}/bwb")
@@ -214,4 +215,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(get_env())
