@@ -42,3 +42,12 @@ prd:
   experiment_path: "/llmops/steven-prd"
   # Your provisioned Lakebase project for this environment.
   lakebase_instance: "lb-llmops-steven"
+
+# Vehicle rules project (src/vehicle_rules): settings shared by all environments, combined with the
+# environment's section above. See docs/use_case.md.
+vehicle_rules:
+  volume: "vehicle_rules_files"
+  # Legal texts from the official BWB repository (wetten.overheid.nl), by BWB id.
+  regulations:
+    - bwb_id: "BWBR0025798"
+      title: "Regeling voertuigen"

@@ -63,3 +63,9 @@ mlartifacts/
 # Temporary files
 *.tmp
 *.bak
+
+# Local working files; the code reads and writes the workspace
+data/
+
+# Course slides and materials, kept locally for reference
+docs/course_materials/
