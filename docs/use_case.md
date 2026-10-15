@@ -1,19 +1,12 @@
 # Vehicle rules assistant
 
-The course project of this repo: an agent that tells a car owner, buyer or garage which Dutch vehicle
-rules apply to a specific vehicle, what they mean in practice, and whether the APK (the mandatory
-periodic inspection) checks them. Its code is in `src/vehicle_rules/`.
+The course project of this repo: an agent that tells a car owner, buyer or garage which Dutch vehicle rules apply to a specific vehicle, what they mean in practice, and whether the APK (the mandatory periodic inspection) checks them. Its code is in `src/vehicle_rules/`.
 
-Figures below were checked on 13 October 2026 against the version of the regulation in force since
-1 July 2026.
+Figures below were checked on 13 October 2026 against the version of the regulation in force since 1 July 2026.
 
 ## Goal
 
-The rules are public but hard to use. They sit in one regulation, the *Regeling voertuigen*, of
-1,210 articles of legal Dutch, 942 of which set requirements for vehicles in use. About a third of
-the requirements for passenger cars only apply under conditions such as a first-use date, fuel
-type, equipment, mass or use. These conditions are written into the legal sentences, often
-combined or as exceptions to other paragraphs, and are not stored as fields.
+The rules are public but hard to use. They sit in one regulation, the *Regeling voertuigen*, of 1,210 articles of legal Dutch, 942 of which set requirements for vehicles in use. About a third of the requirements for passenger cars only apply under conditions such as a first-use date, fuel type, equipment, mass or use. These conditions are written into the legal sentences, often combined or as exceptions to other paragraphs, and are not stored as fields.
 
 Seatbelts are an example (article 5.2.47):
 
@@ -24,18 +17,13 @@ Seatbelts are an example (article 5.2.47):
 | 1990 to September 2000 | All forward-facing seats |
 | After September 2000 | All seats |
 
-Owners also don't use the legal terms. "Tinted windows" has to be matched to *lichtdoorlatendheid
-van de voorruit en zijruiten* (light transmission of the windscreen and front side windows). That
-rule applies to every passenger car, but the APK doesn't check it (article 5.2.42, paragraph 3).
+Owners also don't use the legal terms. "Tinted windows" has to be matched to *lichtdoorlatendheid van de voorruit en zijruiten* (light transmission of the windscreen and front side windows). That rule applies to every passenger car, but the APK doesn't check it (article 5.2.42, paragraph 3).
 
-The agent finds the articles that apply, checks their conditions against the vehicle's data from
-the plate, asks the user for what the register doesn't hold (such as equipment), and explains the
-result in plain language.
+The agent finds the articles that apply, checks their conditions against the vehicle's data from the plate, asks the user for what the register doesn't hold (such as equipment), and explains the result in plain language.
 
 ## Why this needs an LLM
 
-The arXiv example in the course uses an LLM to work through a large amount of free text. This
-project does the same: the answer is in the legal text, not in a table that a join can reach.
+The arXiv example in the course uses an LLM to work through a large amount of free text. This project does the same: the answer is in the legal text, not in a table that a join can reach.
 
 | Step | Done by |
 |---|---|
@@ -63,8 +51,7 @@ How the regulation is built:
 - **Annex VIII:** 174k characters that work out the chapter 5 requirements in detail. It is part of the same XML.
 - **Versions:** the regulation has had 74 versions since 2009, most recently on 1 January and 1 July 2026.
 
-The vehicle register doesn't record equipment (a tow bar, a catalytic converter, headlight levelling),
-so the agent has to ask the user about it.
+The vehicle register doesn't record equipment (a tow bar, a catalytic converter, headlight levelling), so the agent has to ask the user about it.
 
 Possible extensions: the two Dutch laws that chapter 5 links to most, in the same XML format.
 
