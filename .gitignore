@@ -64,5 +64,5 @@ mlartifacts/
 *.tmp
 *.bak
 
-# Local downloads and ingest output
+# Local working files; the code reads and writes the workspace
 data/

@@ -61,9 +61,14 @@ suspension after five idle minutes. Creating extra branches or computes can incr
   Add the other course modules as you work through the lectures.
 - `src/vehicle_rules/`: the course project, an assistant for Dutch vehicle rules, described in
   `docs/use_case.md`. Its `config.py` combines an environment's section of `project_config.yml`
-  with the `vehicle_rules` section. `uv run python -m vehicle_rules.ingest` downloads the
-  regulations in force into `data/` (ignored by git), with one JSON line per article next to each
-  XML file.
+  with the `vehicle_rules` section. `ingest.py` downloads the regulations in force into the
+  workspace and rebuilds the articles table (below). Run it in a workspace notebook, or locally
+  through databricks-connect: `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`.
+- Legal texts, in the workspace only: the `vehicle_rules_files` volume holds each regulation's XML
+  (`bwb/`) and an unofficial English translation of article 2.2 and chapter 5 of the Regeling
+  voertuigen (`en/`, with the `glossary.md` it follows), made with Claude because no English version
+  exists; the Dutch text prevails. `llmops_dev.steven.regulation_articles` has one row per article,
+  with `text_nl` and, where translated, `text_en`.
 - RDW vehicle data, in the workspace only: `llmops_dev.steven.rdw_registered_vehicles` (9,738,055
   passenger cars, data up to 2026-10-11) and `rdw_registered_vehicles_fuel` (one row per fuel per
   car). Both are RDW open data, copied as they are from the gold and silver layers of a separate
