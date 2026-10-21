@@ -1,0 +1,24 @@
+# The ingest job: one serverless notebook task that installs the wheel, downloads the regulations in
+# force into the vehicle_rules_files volume and rebuilds the regulation_articles table in your schema
+# of the target's catalog (dev: llmops_dev.steven). It has no schedule: run it by hand, for example
+# when a new version of a regulation comes into force. The English translation it reads from the
+# volume is not made here; see src/vehicle_rules/ingest.py.
+resources:
+  jobs:
+    ingest:
+      name: job-ingest-steven-${bundle.target}
+      budget_policy_id: "5574b9a2-99e5-3e77-8a69-ba40282a9a04"
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "6"
+            dependencies:
+              - ../dist/*.whl
+
+      tasks:
+        - task_key: ingest
+          environment_key: default
+          notebook_task:
+            notebook_path: deployment_notebooks/ingest.py
+            base_parameters:
+              env: ${bundle.target}
