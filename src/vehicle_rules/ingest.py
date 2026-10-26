@@ -3,7 +3,8 @@
 Each regulation's XML goes to bwb/ in the project volume, and each article to a row of the
 regulation_articles table. Where the volume holds an English translation of that version, in
 en/{bwb_id}_{version}.en.md, its articles fill text_en. That translation is not made here: it was
-made once, by hand with Claude, for the purposes of the course, and covers one version only.
+made by hand with Claude, for the purposes of the course, and covers one version and only the parts the
+assistant needs (article 1.1, article 2.2, chapter 5, article 11.11 and Annexes II and VIII).
 
 Run it as the ingest job (resources/ingest.job.yml), or from the repo root through databricks-connect:
 `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`.
@@ -27,7 +28,7 @@ SKIPPED_TAGS = {"meta-data", "kop", "lidnr", "li.nr", "colspec"}
 # Running text inside a paragraph; anything else starts a new line.
 INLINE_TAGS = {"intref", "extref", "nadruk", "sup", "inf", "sub"}
 REQUIREMENT_HEADER = ["eisen", "wijze van keuren"]
-EN_HEADING = re.compile(r"^#+ Article (\S+)$")
+EN_HEADING = re.compile(r"^#+ (?:Annex (\S+), )?Article (\S+)$")
 TABLE = "regulation_articles"
 SCHEMA = (
     "bwb_id string, version string, annex string, article string, chapter string, section string, "
@@ -145,22 +146,22 @@ def parse_articles(xml: bytes) -> list[dict]:
     return articles
 
 
-def english_articles(md: str) -> dict[str, str]:
-    """Split an English translation into articles: number → its lines, laid out like the Dutch text."""
-    articles: dict[str, list[str]] = {}
+def english_articles(md: str) -> dict[tuple[str | None, str], str]:
+    """Split an English translation into articles: (annex, number) → its lines, laid out like the Dutch text."""
+    articles: dict[tuple[str | None, str], list[str]] = {}
     current = None
     for line in md.splitlines():
         if not line.strip():
             continue
         m = EN_HEADING.match(line)
         if m:
-            current = m.group(1)
+            current = m.groups()
             articles[current] = []
         elif line.startswith("#"):
             current = None
         elif current:
             articles[current].append(line)
-    return {nr: "\n".join(lines) for nr, lines in articles.items()}
+    return {key: "\n".join(lines) for key, lines in articles.items()}
 
 
 def spark_session() -> SparkSession:
@@ -191,7 +192,7 @@ def main(env: str = "dev") -> None:
         articles = parse_articles(xml)
         for a in articles:
             effective_from = date.fromisoformat(a["effective_from"]) if a["effective_from"] else None
-            text_en = None if a["annex"] else english.get(a["article"])
+            text_en = english.get((a["annex"], a["article"]))
             rows.append(
                 (
                     regulation.bwb_id,
@@ -206,7 +207,7 @@ def main(env: str = "dev") -> None:
                     text_en,
                 )
             )
-        translated = sum(1 for a in articles if not a["annex"] and a["article"] in english)
+        translated = sum(1 for a in articles if (a["annex"], a["article"]) in english)
         print(f"{regulation.title} ({name}): {len(articles)} articles, {translated} of them in English")
     table = f"{config.full_schema_name}.{TABLE}"
     spark = spark_session()
