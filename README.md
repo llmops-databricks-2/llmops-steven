@@ -62,9 +62,12 @@ suspension after five idle minutes. Creating extra branches or computes can incr
 - `src/vehicle_rules/`: the course project, an assistant for Dutch vehicle rules, described in
   `docs/use_case.md`. Its `config.py` combines an environment's section of `project_config.yml`
   with the `vehicle_rules` section. `ingest.py` downloads the regulations in force into the
-  workspace and rebuilds the articles table (below). Run it as the unscheduled `ingest` job of the
-  bundle, or locally through databricks-connect:
-  `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`.
+  workspace and rebuilds the articles table (below), with each article's paragraphs. `chunks.py`
+  rebuilds `regulation_chunks` from it: a chunk per translated article and one per paragraph, told apart by
+  `granularity`, with an embedding of their English (`docs/week-2.md`). Run both as the unscheduled
+  `ingest` job of the bundle, or locally through databricks-connect:
+  `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`, then
+  `... -m vehicle_rules.chunks`.
 - Legal texts, in the workspace only: the `vehicle_rules_files` volume holds each regulation's XML
   (`bwb/`) and an unofficial English translation of article 2.2 and chapter 5 of the Regeling
   voertuigen (`en/`, with the `glossary.md` it follows). No English version exists, so for the

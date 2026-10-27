@@ -13,7 +13,9 @@ dev:
   schema: "steven"
   volume: "arxiv_files"
   llm_endpoint: "course_ops.gateway.chat"
-  embedding_endpoint: "course_ops.gateway.embed"
+  # Not course_ops.gateway.embed: ai_query doesn't support custom Unity Gateway model services yet
+  # (https://docs.databricks.com/aws/en/ai-gateway/query-model-services#limitations).
+  embedding_endpoint: "databricks-gte-large-en"
   warehouse_id: "1f73870528ddbc12"
   experiment_path: "/llmops/steven-dev"
   # Your provisioned Lakebase project.
@@ -25,7 +27,9 @@ acc:
   schema: "steven"
   volume: "arxiv_files"
   llm_endpoint: "course_ops.gateway.chat"
-  embedding_endpoint: "course_ops.gateway.embed"
+  # Not course_ops.gateway.embed: ai_query doesn't support custom Unity Gateway model services yet
+  # (https://docs.databricks.com/aws/en/ai-gateway/query-model-services#limitations).
+  embedding_endpoint: "databricks-gte-large-en"
   warehouse_id: "1f73870528ddbc12"
   experiment_path: "/llmops/steven-acc"
   # Your provisioned Lakebase project for this environment.
@@ -37,7 +41,9 @@ prd:
   schema: "steven"
   volume: "arxiv_files"
   llm_endpoint: "course_ops.gateway.chat"
-  embedding_endpoint: "course_ops.gateway.embed"
+  # Not course_ops.gateway.embed: ai_query doesn't support custom Unity Gateway model services yet
+  # (https://docs.databricks.com/aws/en/ai-gateway/query-model-services#limitations).
+  embedding_endpoint: "databricks-gte-large-en"
   warehouse_id: "1f73870528ddbc12"
   experiment_path: "/llmops/steven-prd"
   # Your provisioned Lakebase project for this environment.

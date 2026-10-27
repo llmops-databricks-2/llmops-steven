@@ -20,17 +20,19 @@ class Regulation(BaseModel):
 class ProjectConfig(BaseModel):
     """Project configuration model.
 
-    The course resources come from the environment's section of project_config.yml, the project
-    settings from its vehicle_rules section.
+    The usage policy comes from the top level of project_config.yml, the course resources from the
+    environment's section, the project settings from its vehicle_rules section.
     """
 
+    usage_policy_id: str = Field(..., description="Usage policy to set on every serverless job, endpoint and pipeline")
     catalog: str = Field(..., description="Unity Catalog name")
     db_schema: str = Field(..., description="Schema name", alias="schema")
     volume: str = Field(..., description="Volume name for the downloaded legal texts")
     llm_endpoint: str = Field(..., description="AI Gateway chat model service name")
-    embedding_endpoint: str = Field(..., description="AI Gateway embedding model service name")
+    embedding_endpoint: str = Field(..., description="Embedding model endpoint, the same for documents and queries")
     experiment_path: str = Field(..., description="MLflow experiment path for this environment")
     warehouse_id: str = Field(..., description="Warehouse ID")
+    lakebase_instance: str = Field(..., description="Lakebase project ID")
     genie_space_id: str | None = Field(None, description="Genie space ID for MCP integration")
     regulations: list[Regulation] = Field(..., description="Legal texts the assistant answers from")
     system_prompt: str = Field(
@@ -67,7 +69,13 @@ class ProjectConfig(BaseModel):
             raise ValueError(f"Section '{PROJECT_SECTION}' not found in config file")
 
         # The project section wins, so its volume replaces the course's suggested arxiv_files.
-        return cls(**{**config_data[env], **config_data[PROJECT_SECTION]})
+        return cls(
+            **{
+                "usage_policy_id": config_data.get("usage_policy_id"),
+                **config_data[env],
+                **config_data[PROJECT_SECTION],
+            }
+        )
 
     @property
     def schema(self) -> str:
