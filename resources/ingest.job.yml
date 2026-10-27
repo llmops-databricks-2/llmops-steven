@@ -1,8 +1,9 @@
-# The ingest job: one serverless notebook task that installs the wheel, downloads the regulations in
-# force into the vehicle_rules_files volume and rebuilds the regulation_articles table in your schema
-# of the target's catalog (dev: llmops_dev.steven). It has no schedule: run it by hand, for example
-# when a new version of a regulation comes into force. The English translation it reads from the
-# volume is not made here; see src/vehicle_rules/ingest.py.
+# The ingest job: two serverless notebook tasks that install the wheel. The first downloads the
+# regulations in force into the vehicle_rules_files volume and rebuilds the regulation_articles table in
+# your schema of the target's catalog (dev: llmops_dev.steven); the second rebuilds regulation_chunks
+# from it, at article and paragraph level, and embeds them. It has no schedule: run it by hand, for
+# example when a new version of a regulation comes into force. The English translation it reads from
+# the volume is not made here; see src/vehicle_rules/ingest.py.
 resources:
   jobs:
     ingest:
@@ -20,5 +21,14 @@ resources:
           environment_key: default
           notebook_task:
             notebook_path: deployment_notebooks/ingest.py
+            base_parameters:
+              env: ${bundle.target}
+
+        - task_key: chunks
+          depends_on:
+            - task_key: ingest
+          environment_key: default
+          notebook_task:
+            notebook_path: deployment_notebooks/chunks.py
             base_parameters:
               env: ${bundle.target}
