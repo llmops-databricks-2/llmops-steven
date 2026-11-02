@@ -53,6 +53,10 @@ prd:
 # environment's section above. See docs/use_case.md.
 vehicle_rules:
   volume: "vehicle_rules_files"
+  # The Postgres database in the environment's Lakebase project, on its production branch, and the synced
+  # table that mirrors regulation_chunks into it for retrieval (notebooks/week_2_synced_table.py).
+  lakebase_database: "vehicle_rules"
+  synced_table: "regulation_chunks_synced"
   # Legal texts from the official BWB repository (wetten.overheid.nl), by BWB id.
   regulations:
     - bwb_id: "BWBR0025798"

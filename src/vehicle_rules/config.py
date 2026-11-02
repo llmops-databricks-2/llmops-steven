@@ -33,6 +33,8 @@ class ProjectConfig(BaseModel):
     experiment_path: str = Field(..., description="MLflow experiment path for this environment")
     warehouse_id: str = Field(..., description="Warehouse ID")
     lakebase_instance: str = Field(..., description="Lakebase project ID")
+    lakebase_database: str = Field(..., description="Postgres database in the Lakebase project")
+    synced_table: str = Field(..., description="Synced table of the chunks, in Unity Catalog and Postgres")
     genie_space_id: str | None = Field(None, description="Genie space ID for MCP integration")
     regulations: list[Regulation] = Field(..., description="Legal texts the assistant answers from")
     system_prompt: str = Field(

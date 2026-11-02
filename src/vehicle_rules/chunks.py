@@ -175,7 +175,7 @@ def chunks(article: dict) -> list[dict]:
 
 
 def main(env: str = "dev") -> None:
-    """Rebuild the chunks table from the articles table, with an embedding of each chunk's text."""
+    """Merge the chunks of the articles table into the chunks table, with an embedding of each chunk's text."""
     config = load_config(env=env)
     spark = spark_session()
     articles = spark.table(f"{config.full_schema_name}.{ARTICLES_TABLE}").collect()
@@ -183,14 +183,40 @@ def main(env: str = "dev") -> None:
     duplicates = [i for i, n in Counter(r["id"] for r in rows).items() if n > 1]
     if duplicates:
         raise ValueError(f"Chunk ids are not unique: {duplicates[:10]}")
-    endpoint = config.embedding_endpoint.replace("'", "''")
-    df = spark.createDataFrame(rows, SCHEMA).withColumn(
-        "embedding", F.expr(f"CAST(ai_query('{endpoint}', text) AS ARRAY<FLOAT>)")
-    )
     table = f"{config.full_schema_name}.{TABLE}"
-    df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(table)
-    # The Lakebase synced table syncs the changes through the change data feed.
-    spark.sql(f"ALTER TABLE {table} SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
+    # The Lakebase synced table syncs the changes through the change data feed, so the table is merged into
+    # rather than overwritten: the feed then holds only the chunks that changed, and the schema stays the same.
+    # A change to SCHEMA therefore needs the table dropped first, and the synced table recreated.
+    spark.sql(
+        f"CREATE TABLE IF NOT EXISTS {table} ({SCHEMA}, embedding array<float>) "
+        "TBLPROPERTIES (delta.enableChangeDataFeed = true)"
+    )
+    # A chunk keeps its embedding while its text stays the same; only new and changed texts are embedded.
+    new = spark.createDataFrame(rows, SCHEMA)
+    known = spark.table(table).select("id", F.col("text").alias("known_text"), "embedding")
+    kept = new.join(known, "id").where("text = known_text").drop("known_text")
+    endpoint = config.embedding_endpoint.replace("'", "''")
+    # Collected, so that the merge below cannot call the embedding model a second time for the same rows.
+    embedded = (
+        new.join(kept.select("id"), "id", "left_anti")
+        .withColumn("embedding", F.expr(f"CAST(ai_query('{endpoint}', text) AS ARRAY<FLOAT>)"))
+        .collect()
+    )
+    print(f"{table}: {len(embedded)} chunks embedded, {len(rows) - len(embedded)} kept their embedding")
+    source = kept.unionByName(spark.createDataFrame(embedded, f"{SCHEMA}, embedding array<float>"))
+    source.createOrReplaceTempView("chunks_source")
+    columns = [c.split()[0] for c in SCHEMA.split(", ")] + ["embedding"]
+    changed = " OR ".join(f"NOT (t.{c} <=> s.{c})" for c in columns)
+    merged = spark.sql(
+        f"MERGE INTO {table} t USING chunks_source s ON t.id = s.id "
+        f"WHEN MATCHED AND ({changed}) THEN UPDATE SET * "
+        "WHEN NOT MATCHED THEN INSERT * "
+        "WHEN NOT MATCHED BY SOURCE THEN DELETE"
+    ).first()
+    print(
+        f"{table}: {merged.num_inserted_rows} inserted, {merged.num_updated_rows} updated, "
+        f"{merged.num_deleted_rows} deleted"
+    )
     for granularity, n in spark.table(table).groupBy("granularity").count().orderBy("granularity").collect():
         print(f"{table}: {n} {granularity} chunks")
 
