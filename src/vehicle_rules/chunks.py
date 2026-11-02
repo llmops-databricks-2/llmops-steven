@@ -27,9 +27,8 @@ from collections import Counter
 from pyspark.sql import functions as F
 
 from vehicle_rules.config import get_env, load_config
-from vehicle_rules.ingest import PARAGRAPH_NUMBER
+from vehicle_rules.ingest import PARAGRAPH_NUMBER, spark_session
 from vehicle_rules.ingest import TABLE as ARTICLES_TABLE
-from vehicle_rules.ingest import spark_session
 
 TABLE = "regulation_chunks"
 METHOD = "Wijze van keuren:"
@@ -49,7 +48,7 @@ SCHEMA = (
 
 
 def covered(method: str) -> set[str]:
-    """The paragraph numbers a shared inspection method names, such as {"1", "2"} for "Leden 1 en 2:"."""
+    """Return the paragraph numbers a shared inspection method names, such as {"1", "2"} for "Leden 1 en 2:"."""
     m = METHOD_RANGE.match(method)
     if not m:
         return set()
@@ -129,7 +128,7 @@ def chunk_id(granularity: str, bwb_id: str, annex: str | None, article: str, par
 
 
 def vehicle_type(article: dict) -> str | None:
-    """The vehicle type of a chapter 5 article: its division's heading, "Division 2 Passenger cars"."""
+    """Return the vehicle type of a chapter 5 article from its division's heading, "Division 2 Passenger cars"."""
     if article["annex"] or article["chapter"] != "5" or article["section"] in GENERAL_DIVISIONS:
         return None
     division = next((h for h in article["headings_en"] or [] if h.startswith("Division ")), None)
@@ -142,7 +141,7 @@ def is_definitions_intro(paragraph: dict) -> bool:
 
 
 def chunks(article: dict) -> list[dict]:
-    """The chunks of a translated row of regulation_articles: the article, then each of its paragraphs."""
+    """Chunk a translated row of regulation_articles: the article, then each of its paragraphs."""
     if not article["text_en"]:
         return []
     annex, nr = article["annex"], article["article"]
@@ -167,7 +166,9 @@ def chunks(article: dict) -> list[dict]:
     paragraphs = [p for p in with_shared_methods(tidy) if p["text_en"] and not is_definitions_intro(p)]
     by_paragraph = [chunk("paragraph", p["text_nl"], p["text_en"], p["paragraph"]) for p in paragraphs]
     if len(article["text_en"]) > MAX_ARTICLE_CHARS:
-        by_article = [{**c, "granularity": "article", "id": "article" + c["id"][len("paragraph") :]} for c in by_paragraph]
+        by_article = [
+            {**c, "granularity": "article", "id": "article" + c["id"][len("paragraph") :]} for c in by_paragraph
+        ]
     else:
         by_article = [chunk("article", article["text_nl"], article["text_en"], None)]
     return by_article + by_paragraph

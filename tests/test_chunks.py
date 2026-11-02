@@ -49,7 +49,11 @@ ARTICLE = {
     "text_nl": "1. a\nWijze van keuren: Leden 1 en 2: x\n2. b",
     "text_en": "1. A\nInspection method: Paragraphs 1 and 2: X\n2. B",
     "paragraphs": [
-        {"paragraph": "1", "text_nl": "1. a\nWijze van keuren: Leden 1 en 2: x", "text_en": "1. A\nInspection method: Paragraphs 1 and 2: X"},
+        {
+            "paragraph": "1",
+            "text_nl": "1. a\nWijze van keuren: Leden 1 en 2: x",
+            "text_en": "1. A\nInspection method: Paragraphs 1 and 2: X",
+        },
         {"paragraph": "2", "text_nl": "2. b", "text_en": "2. B"},
     ],
 }
