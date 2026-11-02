@@ -7,7 +7,7 @@ The homework: prepare the documents for retrieval (inspect them, chunk them, emb
 | 00 | Not course homework: complete the English translation | Done: see below |
 | 01 | Inspect the processed documents and chunk tables; compare chunks with their source and note lost structure | Done: `regulation_chunks`, see below |
 | 02 | Review chunk sizes, try one alternative strategy, check the embedding model's input limit | Done: see below |
-| 03 | Create a Lakebase synced table; confirm primary key, vector type, sync state and row count | To do |
+| 03 | Create a Lakebase synced table; confirm primary key, vector type, sync state and row count | In progress: `notebooks/week_2_synced_table.py`, not yet run |
 | 04 | Run semantic, filtered and hybrid search on the same questions; note what changes | To do |
 | 05 | Submit through the pull-request process: configuration approach, observations, limitations | Open: this document and pull request #2 |
 
@@ -38,8 +38,8 @@ After the `ingest` job was rerun, 1,117 of the 1,479 rows in `regulation_article
 The course's chunking does not carry over: it takes each element that `ai_parse_document` finds in a PDF. The Regeling voertuigen is XML with its structure marked up, so the question is not where to cut the text but which unit of the law to retrieve: the article or its paragraph. We keep both, in one table, to compare them before choosing.
 
 - **`ingest.py`** also splits each article into its paragraphs, in a new `paragraphs` column of `regulation_articles`, from the XML: a lid; a numbered row of a requirement table, with its unnumbered rows (items a., b.); a numbered item of an annex article; or a definition, numbered by its term. Joined, the paragraphs are exactly `text_nl`. The English is split at the same lines, which works for all 1,117 translated articles. `headings_en` holds the English headings above each article.
-- **`chunks.py`** builds `regulation_chunks`: per translated article, one chunk with `granularity = 'article'` and one per paragraph with `granularity = 'paragraph'`. `text` starts with a line placing the chunk ("Division 2 Passenger cars › § 9 Bodywork › Article 5.2.47, paragraph 2"), followed by the English, and is embedded with `databricks-gte-large-en` through `ai_query`. `vehicle_type` holds the vehicle type of a chapter 5 division, to filter on in item 04. The change data feed is on, for the synced table of item 03.
-- **The job.** `chunks` is a second task of the `ingest` job. Each run re-embeds every chunk, about 0.5M tokens.
+- **`chunks.py`** builds `regulation_chunks`: per translated article, one chunk with `granularity = 'article'` and one per paragraph with `granularity = 'paragraph'`. `text` starts with a line placing the chunk ("Division 2 Passenger cars › § 9 Bodywork › Article 5.2.47, paragraph 2"), followed by the English, and is embedded with `databricks-gte-large-en` through `ai_query`. `vehicle_type` holds the vehicle type of a chapter 5 division, to filter on in item 04. The change data feed is on, for the synced table of item 03, and the chunks are merged into the table on `id` rather than overwriting it, so the feed holds only the chunks that changed.
+- **The job.** `chunks` is a second task of the `ingest` job. A chunk keeps its embedding while its text stays the same, so a run embeds only new and changed chunks; embedding all of them takes about 0.5M tokens.
 - **Inspection.** `notebooks/week_2_chunks.py` makes the counts and comparisons below.
 
 | Granularity | Chunks | Median | p99 | Largest |
@@ -80,3 +80,12 @@ Seven owner questions, with the articles that answer them picked by hand, search
 - Near the top at both granularities is often the same requirement for another vehicle type: 5.5.42 and 5.3.42 after 5.2.42 for tinted windows. Filtering on `vehicle_type` (item 04) should remove them.
 
 No granularity wins yet. Items 03 and 04 compare them on the synced table, with filtered and hybrid search.
+
+## The synced table
+
+The course offers two ways to serve the chunks: an AI Search endpoint with an index, or a Lakebase synced table queried through Postgres. It recommends Lakebase, and so do we, for its cost: an AI Search endpoint bills for as long as it exists, queried or not, while the Lakebase compute of the project (0.5 to 2 CU) suspends after five idle minutes. Storage, syncs, query embeddings and active queries still cost, and an open connection keeps the compute awake.
+
+- **The configuration.** `project_config.yml` names the Postgres database, `vehicle_rules` on the project's production branch, and the synced table, `regulation_chunks_synced`. `notebooks/week_2_synced_table.py` creates the database and the pgvector extension if they are missing, then the synced table: `id` as primary key, triggered rather than continuous, the usage policy on its pipeline, and `embedding` overridden to `vector(1024)`, since a Delta array otherwise arrives as JSONB. Rerun, it starts a sync and waits for that update.
+- **Delta stays the source.** Chunks change in `regulation_chunks` and reach Postgres through a sync, never by writing to the copy.
+- **Merging, not overwriting.** A triggered sync reads the change data feed. Overwriting `regulation_chunks` on every run, with `overwriteSchema`, put every chunk in the feed as deleted and inserted again, and could break incremental syncs. The course appends instead. `chunks.py` now merges on `id`: it inserts new chunks, updates changed ones, deletes those that are gone, and embeds only new and changed texts. A change to the table's columns now means dropping it and recreating the synced table.
+- **Not used.** The `ai_search()` SQL function over Lakebase is in Beta, needs Lakebase Search enabled for the project, which cannot be undone, and failed in the lecture. Item 04 queries Postgres directly.

@@ -1,7 +1,7 @@
 # The ingest job: two serverless notebook tasks that install the wheel. The first downloads the
 # regulations in force into the vehicle_rules_files volume and rebuilds the regulation_articles table in
-# your schema of the target's catalog (dev: llmops_dev.steven); the second rebuilds regulation_chunks
-# from it, at article and paragraph level, and embeds them. It has no schedule: run it by hand, for
+# your schema of the target's catalog (dev: llmops_dev.steven); the second merges its chunks into
+# regulation_chunks, at article and paragraph level, and embeds the new and changed ones. It has no schedule: run it by hand, for
 # example when a new version of a regulation comes into force. The English translation it reads from
 # the volume is not made here; see src/vehicle_rules/ingest.py.
 resources:

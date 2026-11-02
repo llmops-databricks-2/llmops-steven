@@ -1,5 +1,5 @@
 # Databricks notebook source
-"""Rebuild the chunks table from the articles table, at article and paragraph level, with embeddings."""
+"""Merge the chunks of the articles table into the chunks table, at article and paragraph level, with embeddings."""
 
 from databricks.sdk.runtime import dbutils
 

@@ -63,8 +63,8 @@ suspension after five idle minutes. Creating extra branches or computes can incr
   `docs/use_case.md`. Its `config.py` combines an environment's section of `project_config.yml`
   with the `vehicle_rules` section. `ingest.py` downloads the regulations in force into the
   workspace and rebuilds the articles table (below), with each article's paragraphs. `chunks.py`
-  rebuilds `regulation_chunks` from it: a chunk per translated article and one per paragraph, told apart by
-  `granularity`, with an embedding of their English (`docs/week-2.md`). Run both as the unscheduled
+  merges its chunks into `regulation_chunks`: a chunk per translated article and one per paragraph, told apart
+  by `granularity`, with an embedding of their English (`docs/week-2.md`). Run both as the unscheduled
   `ingest` job of the bundle, or locally through databricks-connect:
   `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`, then
   `... -m vehicle_rules.chunks`.
