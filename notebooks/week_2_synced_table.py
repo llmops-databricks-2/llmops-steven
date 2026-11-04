@@ -95,8 +95,12 @@ database = next(
     None,
 )
 if database is None:
+    # A database needs an owner: the Postgres role of whoever runs this, by its full resource name.
+    me = w.current_user.me().user_name
+    owner = next(r for r in w.postgres.list_roles(parent=branch) if r.status.postgres_role == me)
     database = w.postgres.create_database(
-        parent=branch, database=Database(spec=DatabaseDatabaseSpec(postgres_database=config.lakebase_database))
+        parent=branch,
+        database=Database(spec=DatabaseDatabaseSpec(postgres_database=config.lakebase_database, role=owner.name)),
     ).wait()
     print(f"Created {database.name}")
 print(f"Database: {database.name}")
