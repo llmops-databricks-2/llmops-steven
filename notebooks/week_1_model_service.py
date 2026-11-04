@@ -18,7 +18,7 @@
 # MAGIC the workspace. The car is described by its register attributes only, never by its plate.
 # MAGIC
 # MAGIC Run it on serverless in the workspace, or from VS Code through databricks-connect with
-# MAGIC `DATABRICKS_CONFIG_PROFILE=llmops`. It makes eight billable calls to the course service.
+# MAGIC `DATABRICKS_CONFIG_PROFILE=llmops-new`. It makes eight billable calls to the course service.
 
 # COMMAND ----------
 
