@@ -20,7 +20,7 @@
 # MAGIC
 # MAGIC The notebook can be rerun: it creates what is missing (the database, the pgvector extension, the
 # MAGIC synced table) and otherwise starts a sync and waits for it. Run it on serverless in the workspace, or
-# MAGIC from VS Code through databricks-connect with `DATABRICKS_CONFIG_PROFILE=llmops`. Each run costs one
+# MAGIC from VS Code through databricks-connect with `DATABRICKS_CONFIG_PROFILE=llmops-new`. Each run costs one
 # MAGIC pipeline run and the Lakebase compute while it writes and is queried; nothing is embedded.
 
 # COMMAND ----------

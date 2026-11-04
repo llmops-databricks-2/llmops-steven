@@ -7,7 +7,7 @@ made by hand with Claude, for the purposes of the course, and covers one version
 assistant needs (article 1.1, article 2.2, chapter 5, article 11.11 and Annexes II and VIII).
 
 Run it as the ingest job (resources/ingest.job.yml), or from the repo root through databricks-connect:
-`DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`.
+`DATABRICKS_CONFIG_PROFILE=llmops-new uv run python -m vehicle_rules.ingest`.
 """
 
 import io

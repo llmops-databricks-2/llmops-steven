@@ -18,7 +18,7 @@ and its reference ("Division 2 Passenger cars › § 9 Bodywork › Article 5.2.
 `vehicle_type` holds the vehicle type of the article's division, to filter on.
 
 Run it as the chunks task of the ingest job (resources/ingest.job.yml), after the ingest, or from the repo
-root through databricks-connect: `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.chunks`.
+root through databricks-connect: `DATABRICKS_CONFIG_PROFILE=llmops-new uv run python -m vehicle_rules.chunks`.
 """
 
 import re

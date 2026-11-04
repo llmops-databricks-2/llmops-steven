@@ -85,7 +85,7 @@ suspension after five idle minutes. Creating extra branches or computes can incr
   merges its chunks into `regulation_chunks`: a chunk per translated article and one per paragraph, told apart
   by `granularity`, with an embedding of their English (`docs/week-2.md`). Run both as the unscheduled
   `ingest` job of the bundle, or locally through databricks-connect:
-  `DATABRICKS_CONFIG_PROFILE=llmops uv run python -m vehicle_rules.ingest`, then
+  `DATABRICKS_CONFIG_PROFILE=llmops-new uv run python -m vehicle_rules.ingest`, then
   `... -m vehicle_rules.chunks`.
 - Legal texts, in the workspace only: the `vehicle_rules_files` volume holds each regulation's XML
   (`bwb/`) and an unofficial English translation of article 2.2 and chapter 5 of the Regeling

@@ -17,7 +17,7 @@
 # MAGIC (`vehicle_rules.chunks`): the alternative strategy is the other granularity.
 # MAGIC
 # MAGIC Run it on serverless in the workspace, or from VS Code through databricks-connect with
-# MAGIC `DATABRICKS_CONFIG_PROFILE=llmops`. It makes 13 small calls to the embedding model.
+# MAGIC `DATABRICKS_CONFIG_PROFILE=llmops-new`. It makes 13 small calls to the embedding model.
 
 # COMMAND ----------
 
