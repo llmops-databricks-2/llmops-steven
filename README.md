@@ -86,7 +86,8 @@ suspension after five idle minutes. Creating extra branches or computes can incr
   by `granularity`, with an embedding of their English (`docs/week-2.md`). Run both as the unscheduled
   `ingest` job of the bundle, or locally through databricks-connect:
   `DATABRICKS_CONFIG_PROFILE=llmops-new uv run python -m vehicle_rules.ingest`, then
-  `... -m vehicle_rules.chunks`.
+  `... -m vehicle_rules.chunks`. `search.py` searches the chunks in Postgres, by meaning and by meaning
+  with keywords, each with an optional vehicle type (`notebooks/week_2_search.py`).
 - Legal texts, in the workspace only: the `vehicle_rules_files` volume holds each regulation's XML
   (`bwb/`) and an unofficial English translation of article 2.2 and chapter 5 of the Regeling
   voertuigen (`en/`, with the `glossary.md` it follows). No English version exists, so for the

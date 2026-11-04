@@ -8,7 +8,7 @@ The homework: prepare the documents for retrieval (inspect them, chunk them, emb
 | 01 | Inspect the processed documents and chunk tables; compare chunks with their source and note lost structure | Done: `regulation_chunks`, see below |
 | 02 | Review chunk sizes, try one alternative strategy, check the embedding model's input limit | Done: see below |
 | 03 | Create a Lakebase synced table; confirm primary key, vector type, sync state and row count | Done: `regulation_chunks_synced`, see below |
-| 04 | Run semantic, filtered and hybrid search on the same questions; note what changes | To do |
+| 04 | Run semantic, filtered and hybrid search on the same questions; note what changes | Done: `notebooks/week_2_search.py`, see below |
 | 05 | Submit through the pull-request process: configuration approach, observations, limitations | Open: this document and pull request #2 |
 
 ## The English translation, extended
@@ -79,7 +79,7 @@ Seven owner questions, with the articles that answer them picked by hand, search
 - Both granularities find the article for most questions. Paragraphs do better on the windscreen and worse on the exhaust question, where paragraphs about the particulate filter (Annex VIII, Articles 45e to 45j) crowd out the carbon monoxide test of Articles 40 to 43.
 - Near the top at both granularities is often the same requirement for another vehicle type: 5.5.42 and 5.3.42 after 5.2.42 for tinted windows. Filtering on `vehicle_type` (item 04) should remove them.
 
-No granularity wins yet. Items 03 and 04 compare them on the synced table, with filtered and hybrid search.
+No granularity wins yet. Items 03 and 04 compare them on the synced table, with filtered and hybrid search: see [Search](#search).
 
 ## The synced table
 
@@ -90,6 +90,40 @@ The course offers two ways to serve the chunks: an AI Search endpoint with an in
 - **Merging, not overwriting.** A triggered sync reads the change data feed. Overwriting `regulation_chunks` on every run, with `overwriteSchema`, put every chunk in the feed as deleted and inserted again, and could break incremental syncs. The course appends instead. `chunks.py` now merges on `id`: it inserts new chunks, updates changed ones, deletes those that are gone, and embeds only new and changed texts. A change to the table's columns now means dropping it and recreating the synced table.
 - **Not used.** The `ai_search()` SQL function over Lakebase is in Beta, needs Lakebase Search enabled for the project, which cannot be undone, and failed in the lecture. Item 04 queries Postgres directly.
 - **The result.** `notebooks/week_2_synced_table.py` ran on the new workspace (below). It created the `vehicle_rules` database, owned by the role of whoever creates it, since the API requires an owner, and the synced table, whose state is `SYNCED_TABLE_ONLINE_NO_PENDING_UPDATE`. The notebook stops if the primary key is not `id`, if `embedding` is not `vector(1024)`, or if Postgres does not hold every chunk with its vector: 5,008 chunks, 1,273 articles and 3,735 paragraphs. The pipeline is triggered, so it is idle between syncs.
+
+## Search
+
+`notebooks/week_2_search.py` runs each question through four searches of `vehicle_rules.search` on the synced table, in plain SQL. Semantic search ranks by cosine similarity. Filtered search is the same, limited to `vehicle_type = 'Passenger cars'` or no vehicle type: a strict filter would remove every annex, and with it every answer to the rust, noise and first-admission questions. Hybrid search adds keywords, 70% vector score and 30% `ts_rank_cd` over `text`, with any word of the question matching and the keyword score normalized to 0-1. Filtered hybrid does both. The search is exact, with no vector or keyword index, which is fast enough at 5,008 chunks.
+
+The seven owner questions are those of item 02, with the same answers. Three exact-term questions were added, with their answers read from the text. The rank counts articles, as before; each cell is article / paragraph granularity, and – means no answer in the first 200 chunks. Ten questions are a sanity check, not an evaluation.
+
+| Question | Semantic | Filtered | Hybrid | Filtered hybrid |
+|---|---|---|---|---|
+| Tinted front side windows, and does the APK check them? | 1 / 1 | 1 / 1 | 1 / 8 | 1 / 3 |
+| A car from 1987: seat belts in the back? | 1 / 1 | 1 / 1 | 1 / 1 | 1 / 1 |
+| Rust damage on a car with a self-supporting body | 1 / 1 | 1 / 1 | 6 / 3 | 4 / 3 |
+| Date of first admission of an imported car | 1 / 1 | 1 / 1 | 1 / 2 | 1 / 2 |
+| Windscreen damage in the driver's field of view | 2 / 1 | 2 / 1 | 1 / 1 | 1 / 1 |
+| Maximum noise level of a passenger car | 1 / 2 | 1 / 2 | 2 / 2 | 2 / 2 |
+| What the APK checks on the exhaust of a petrol car | 1 / 5 | 1 / 5 | 1 / 1 | 1 / 1 |
+| What does article 5.2.47 require? | 165 / – | 78 / – | 163 / – | 81 / – |
+| Which lambda value must a petrol car stay within? | 1 / 1 | 1 / 1 | 1 / 1 | 1 / 1 |
+| When does a passenger car need a tachograph? | 1 / 1 | 1 / 1 | 1 / 1 | 1 / 1 |
+
+- **Semantic search in Postgres repeats item 02.** The seven owner questions rank the same as in pandas on the Delta vectors, so the synced table and its vectors serve what was embedded.
+- **The filter changes the evidence, not the rank.** The answer was already on top, so no owner question moved. What goes is the same requirement for other vehicle types: of the first five chunks of each of the ten questions, 8 at article and 6 at paragraph granularity belong to another vehicle type without the filter, none with it. For tinted windows the articles after 5.2.42 are VIII 99 and VIII 94 instead of 5.5.42 and 5.3.42. The answers in the annexes stayed.
+- **Hybrid search helps on two owner questions and hurts on five.** Of the 14 owner cells it is better on the windscreen at article granularity and on the exhaust at paragraph granularity, the case item 02 left open: from 5 to 1, past the particulate filter articles. It is worse on tinted windows, rust and first admission at paragraph granularity and on rust and noise at article granularity. For tinted windows at paragraph granularity, the first articles become 5.8.57, 5.2.57 and 5.2.51, and the answer, 5.2.42, falls to 8.
+- **The exact article number fails everywhere, hybrid included.** This is the case keywords were expected to win. Numbers mean little to the embedding model, and `ts_rank_cd` does not weigh rare words higher: "article" is in every one of the 3,735 paragraph chunks and "5.2.47" in 10, and the top of the hybrid results is articles that repeat the word, such as article 11.11, with "article" 11 times in its text. That is the likely cause, not a confirmed one: the Postgres scores of these chunks were not inspected. The other two exact-term questions, lambda and tachograph, rank first in every search, so semantic search finds a rare word when it carries the meaning.
+- **Two ranks understate the evidence.** The answers were picked by hand and are not complete. Noise: 5.2.11 paragraph 3 limits the sound level near the exhaust and refers to Annex VIII, Articles 30 to 32, so its first place is a fair answer. Rust: VIII 6 and VIII 18, on top in hybrid search, explain how the damage units are determined, which supports the answer but does not state it, while VIII 5 states the limit of 2E. VIII 15 is about a fully load-bearing chassis, so it is wrong for this car.
+
+For now, filtered semantic search is the best choice: it loses no answer and removes the other vehicle types. Article and paragraph granularity still do not separate: paragraph is better on the windscreen, article on noise and on the exhaust. Hybrid search as built here is not worth its keyword part until the common words stop outweighing the rare ones.
+
+Limitations:
+
+- The questions are few, written and judged by us, and their answers are incomplete.
+- The hybrid weight is the lecture's 70/30, not tuned, and `ts_rank_cd` is not BM25.
+- A question that names an article needs a lookup on `article`, not a search.
+- The filter is applied by hand; an agent would have to take the vehicle type from the question or the car.
 
 ## The move to the new workspace
 
