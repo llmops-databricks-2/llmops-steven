@@ -7,7 +7,7 @@ The homework: prepare the documents for retrieval (inspect them, chunk them, emb
 | 00 | Not course homework: complete the English translation | Done: see below |
 | 01 | Inspect the processed documents and chunk tables; compare chunks with their source and note lost structure | Done: `regulation_chunks`, see below |
 | 02 | Review chunk sizes, try one alternative strategy, check the embedding model's input limit | Done: see below |
-| 03 | Create a Lakebase synced table; confirm primary key, vector type, sync state and row count | In progress: `notebooks/week_2_synced_table.py`, not yet run |
+| 03 | Create a Lakebase synced table; confirm primary key, vector type, sync state and row count | Done: `regulation_chunks_synced`, see below |
 | 04 | Run semantic, filtered and hybrid search on the same questions; note what changes | To do |
 | 05 | Submit through the pull-request process: configuration approach, observations, limitations | Open: this document and pull request #2 |
 
@@ -89,3 +89,12 @@ The course offers two ways to serve the chunks: an AI Search endpoint with an in
 - **Delta stays the source.** Chunks change in `regulation_chunks` and reach Postgres through a sync, never by writing to the copy.
 - **Merging, not overwriting.** A triggered sync reads the change data feed. Overwriting `regulation_chunks` on every run, with `overwriteSchema`, put every chunk in the feed as deleted and inserted again, and could break incremental syncs. The course appends instead. `chunks.py` now merges on `id`: it inserts new chunks, updates changed ones, deletes those that are gone, and embeds only new and changed texts. A change to the table's columns now means dropping it and recreating the synced table.
 - **Not used.** The `ai_search()` SQL function over Lakebase is in Beta, needs Lakebase Search enabled for the project, which cannot be undone, and failed in the lecture. Item 04 queries Postgres directly.
+- **The result.** `notebooks/week_2_synced_table.py` ran on the new workspace (below). It created the `vehicle_rules` database, owned by the role of whoever creates it, since the API requires an owner, and the synced table, whose state is `SYNCED_TABLE_ONLINE_NO_PENDING_UPDATE`. The notebook stops if the primary key is not `id`, if `embedding` is not `vector(1024)`, or if Postgres does not hold every chunk with its vector: 5,008 chunks, 1,273 articles and 3,735 paragraphs. The pipeline is triggered, so it is idle between syncs.
+
+## The move to the new workspace
+
+The course moved to a new workspace (`dbc-e81ca4d2-f6bd`) in November 2026, with a new SQL warehouse (`fd4639f83ff71fb7`). `week-2` took the host, warehouse and `embedding_service` from the migration pull request, and `llmops-new` is the CLI profile for the new workspace.
+
+- **The data moved with it.** The course team copied the volume and the tables of `llmops_dev.steven`. The counts match this document and `docs/week-1.md`: 1,479 articles, 1,117 translated, and the 9,738,055 cars and 11,445,182 fuel rows, in the tables and in the Parquet files. The chunks kept their embeddings, so nothing was embedded again. This compares counts, not contents: the old workspace could no longer be reached to compare them with.
+- **The change data feed was lost.** `regulation_chunks` was recreated with `CREATE TABLE AS SELECT`, which dropped `delta.enableChangeDataFeed`, and the `chunks` task does not set it on a table that already exists. It was set again with `ALTER TABLE` before the sync.
+- **Redeployed.** The bundle state pointed at jobs of the old workspace, so the jobs were created anew under dev. Acc and prd hold no data and were not deployed.
