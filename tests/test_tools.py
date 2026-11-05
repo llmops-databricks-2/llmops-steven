@@ -100,10 +100,48 @@ def test_a_genie_tool_keeps_the_definition_of_its_server(genie: MagicMock) -> No
     }
 
 
-@pytest.mark.parametrize(("is_error", "expected"), [(False, "1,234"), (True, '{"error": "1,234"}')])
-def test_a_genie_call_returns_its_text_and_marks_an_error(genie: MagicMock, is_error: bool, expected: str) -> None:
-    """An error from the server reaches the model as one."""
-    genie.call_tool.return_value = MagicMock(content=[MagicMock(text="1,234")], isError=is_error)
+GENIE_RESPONSE = {
+    "status": "COMPLETED",
+    "conversationId": "c",
+    "messageId": "m",
+    "content": {
+        "textAttachments": ["There are 1,234."],
+        "queryAttachments": [
+            {
+                "query": "SELECT 1",
+                "statement_response": {
+                    "manifest": {"long": "metadata"},
+                    "result": {"data_array": [{"values": [{"string_value": "1234"}]}]},
+                },
+            }
+        ],
+    },
+}
+
+
+def test_a_genie_answer_keeps_only_what_the_model_needs(genie: MagicMock) -> None:
+    """The SQL, rows, words and identifiers, without the statement's metadata."""
+    genie.call_tool.return_value = MagicMock(content=[MagicMock(text=json.dumps(GENIE_RESPONSE))], isError=False)
     tool = genie_tools(MagicMock(), MagicMock(config=MagicMock(host="https://host/")))[0]
-    assert tool.run(query="How many?") == expected
-    genie.call_tool.assert_called_once_with("query_space", {"query": "How many?"})
+    assert json.loads(tool.run(query="How many?")) == {
+        "status": "COMPLETED",
+        "conversationId": "c",
+        "messageId": "m",
+        "queries": [{"sql": "SELECT 1", "rows": [["1234"]]}],
+        "text": ["There are 1,234."],
+    }
+
+
+def test_a_pending_genie_answer_keeps_the_identifiers_to_poll_with(genie: MagicMock) -> None:
+    """It has no content yet."""
+    pending = {"status": "EXECUTING_QUERY", "conversationId": "c", "messageId": "m"}
+    genie.call_tool.return_value = MagicMock(content=[MagicMock(text=json.dumps(pending))], isError=False)
+    tool = genie_tools(MagicMock(), MagicMock(config=MagicMock(host="https://host/")))[0]
+    assert json.loads(tool.run(query="How many?"))["messageId"] == "m"
+
+
+def test_a_genie_error_reaches_the_model_as_one(genie: MagicMock) -> None:
+    """It is passed on, not parsed as an answer."""
+    genie.call_tool.return_value = MagicMock(content=[MagicMock(text="no access")], isError=True)
+    tool = genie_tools(MagicMock(), MagicMock(config=MagicMock(host="https://host/")))[0]
+    assert json.loads(tool.run(query="How many?")) == {"error": "no access"}

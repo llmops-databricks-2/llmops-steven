@@ -22,6 +22,7 @@ SEARCH_GRANULARITY = "article"
 DEFAULT_VEHICLE_TYPE = "Passenger cars"
 DEFAULT_NUM_RESULTS = 5
 MAX_NUM_RESULTS = 10
+MAX_GENIE_ROWS = 20
 
 
 @dataclass(frozen=True)
@@ -74,9 +75,30 @@ def _reference(chunk: dict[str, Any]) -> str:
     return f"{annex}Article {chunk['article']}{definition}"
 
 
-def _error(message: str) -> str:
+def tool_error(message: str) -> str:
     """Return a problem as a tool result."""
     return json.dumps({"error": message})
+
+
+def _genie_answer(text: str) -> str:
+    """Keep what the model needs of a Genie response: its status, identifiers, SQL, rows and words."""
+    response = json.loads(text)
+    content = response.get("content", {})
+    queries = [
+        {
+            "sql": attachment["query"],
+            "rows": [
+                [value.get("string_value") for value in row["values"]]
+                for row in attachment["statement_response"]["result"].get("data_array", [])[:MAX_GENIE_ROWS]
+            ],
+        }
+        for attachment in content.get("queryAttachments", [])
+    ]
+    keys = ("status", "conversationId", "messageId")
+    return json.dumps(
+        {key: response.get(key) for key in keys} | {"queries": queries, "text": content.get("textAttachments", [])},
+        ensure_ascii=False,
+    )
 
 
 def genie_tools(config: ProjectConfig, workspace: WorkspaceClient) -> list[Tool]:
@@ -90,7 +112,7 @@ def genie_tools(config: ProjectConfig, workspace: WorkspaceClient) -> list[Tool]
         def run(**arguments: Any) -> str:  # noqa: ANN401
             response = client.call_tool(definition.name, arguments)
             text = "".join(block.text for block in response.content)
-            return _error(text) if response.isError else text
+            return tool_error(text) if response.isError else _genie_answer(text)
 
         function = {
             "name": definition.name,
@@ -113,9 +135,9 @@ def make_tools(
     def search_regulations(query: str, num_results: int = DEFAULT_NUM_RESULTS) -> str:
         """Return the chunks closest to the query, keeping those of this vehicle type and of any vehicle."""
         if not query.strip():
-            return _error("The query is empty.")
+            return tool_error("The query is empty.")
         if not 1 <= num_results <= MAX_NUM_RESULTS:
-            return _error(f"num_results must be between 1 and {MAX_NUM_RESULTS}.")
+            return tool_error(f"num_results must be between 1 and {MAX_NUM_RESULTS}.")
         embedding = embed_question(config, workspace, query)
         chunks = semantic(conn, config, embedding, SEARCH_GRANULARITY, vehicle_type=vehicle_type, limit=num_results)
         results = [
@@ -128,9 +150,11 @@ def make_tools(
         chunks = article_chunks(conn, config, article, annex)
         if not chunks:
             hint = f" in annex {annex}" if annex else ". If it is in an annex, give the annex too"
-            return _error(f"There is no translated article {article}{hint}.")
+            return tool_error(f"There is no translated article {article}{hint}.")
         if len(chunks) > 1:
-            return _error(f"Article {article} is too long to read whole. Use search_regulations to find a definition.")
+            return tool_error(
+                f"Article {article} is too long to read whole. Use search_regulations to find a definition."
+            )
         return json.dumps({"reference": _reference(chunks[0]), "text": chunks[0]["text"]}, ensure_ascii=False)
 
     return [
