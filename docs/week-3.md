@@ -19,13 +19,13 @@ An owner asks about a car, in English, with or without a plate: "My car is from 
 | Capability | Input | Output | Type | Who calls it | Identity |
 |---|---|---|---|---|---|
 | Plate lookup | Plate | The car's facts and fuels, or "not found" | Local function | Application code | The current user, through the SQL warehouse |
-| `search_regulations` | Query, optional vehicle type | Chunks of the best articles, with reference and score | Local function | The model | The current user's Lakebase role |
+| `search_regulations` | Query, optional number of results | Chunks of the best articles, with reference and score | Local function | The model | The current user's Lakebase role |
 | `get_article` | Article number, optional annex | The whole article | Local function | The model | The current user's Lakebase role |
 | Genie | A question about the data | The SQL and its result | MCP | The model | The current user, with access to the Genie space and the warehouse |
 
 - **The plate lookup is not a tool of the model.** Code runs it, so that a car's facts never depend on what the model chooses. It normalizes the plate to the form the table holds, six uppercase letters and digits without dashes.
-- **`search_regulations`** wraps `search.semantic`, the best search of week 2. It is not hybrid, unlike the course's tool: hybrid search hurt more owner questions than it helped.
-- **`get_article`** answers questions that name an article, which no search found in week 2, and follows references such as "Annex VIII, Article 40". Article 1.1 is chunked per definition, so it returns all the chunks of an article, in order.
+- **`search_regulations`** wraps `search.semantic`, the best search of week 2. It is not hybrid, unlike the course's tool: hybrid search hurt more owner questions than it helped. The vehicle type is not a parameter: code sets it, since a wrong label from the model would quietly leave only the chunks without a vehicle type. It is `Passenger cars`, with or without a plate, so a question about a van does not get the rules for vans.
+- **`get_article`** answers questions that name an article, which no search found in week 2, and follows references such as "Annex VIII, Article 40". Article 1.1 is the exception: at some 41,000 characters it is chunked per definition, even at article granularity, so `get_article` refuses it and points to the search, which returns a definition with its Dutch term.
 - **Genie** answers questions about the fleet, such as how many cars of 1987 are registered. This is a side capability: the use case is about one car. Genie is a tool of the agent, not its entry point. It writes SQL over Unity Catalog tables, so it cannot search the chunks in Lakebase, apply a legal condition to a car, or keep to the rules of a good answer.
 
 These stay local functions rather than MCP, as the course does for pgvector: the logic is specific to this agent, and no other application uses it.
@@ -95,8 +95,8 @@ Without a plate, the agent answers in general and lists the conditions, then inv
 
 ## Open points
 
-- **Vehicle type.** The chunks say `Passenger cars` and RDW says `Personenauto`, so the lookup needs a mapping. Fuels are in Dutch too, such as `Benzine`.
-- **Finding a plate.** A Dutch plate has several patterns, and a rule must not take an ordinary word for one.
+- **Fuels.** The register gives them in Dutch, such as `Benzine`, so the model has to read them as such.
+- **Finding a plate.** A plate is found with dashes or without, in any of the 11 shapes in the table. Not with spaces, since "in 19 am" would look like one.
 - **Session access.** A session ID is not an authorization check, and the course's table has no owner. So session IDs are random UUIDs, and the table gets an `owner_id` that every load and save checks. While the agent runs as the current user, every session has the same owner, so a test with two made-up owners proves the check. `owner_id` becomes a real identity with deployment, and must then come from the verified login, not from the request.
 - **Plates are not masked.** Plates are public in the RDW open data, and this course project has no real users. A session does link a plate to the person asking, so this should be reviewed before real owners use the agent.
 - **Identity.** The agent runs as the current user for now. A service principal, or acting on behalf of the user, comes with deployment.
