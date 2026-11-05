@@ -12,6 +12,7 @@ from typing import Any
 
 import psycopg
 from databricks.sdk import WorkspaceClient
+from databricks_mcp import DatabricksMCPClient
 
 from vehicle_rules.config import ProjectConfig
 from vehicle_rules.search import article_chunks, embed_question, semantic
@@ -76,6 +77,29 @@ def _reference(chunk: dict[str, Any]) -> str:
 def _error(message: str) -> str:
     """Return a problem as a tool result."""
     return json.dumps({"error": message})
+
+
+def genie_tools(config: ProjectConfig, workspace: WorkspaceClient) -> list[Tool]:
+    """Return the tools of the Genie space, as its MCP server defines them: one to ask, one to wait for the answer."""
+    url = f"{workspace.config.host.rstrip('/')}/api/2.0/mcp/genie/{config.genie_space_id}"
+    client = DatabricksMCPClient(server_url=url, workspace_client=workspace)
+
+    def tool(definition: Any) -> Tool:  # noqa: ANN401
+        """Adapt an MCP tool definition to a Tool."""
+
+        def run(**arguments: Any) -> str:  # noqa: ANN401
+            response = client.call_tool(definition.name, arguments)
+            text = "".join(block.text for block in response.content)
+            return _error(text) if response.isError else text
+
+        function = {
+            "name": definition.name,
+            "description": definition.description,
+            "parameters": definition.inputSchema,
+        }
+        return Tool(definition.name, {"type": "function", "function": function}, run)
+
+    return [tool(definition) for definition in client.list_tools()]
 
 
 def make_tools(

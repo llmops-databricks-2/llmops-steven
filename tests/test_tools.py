@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from vehicle_rules import tools
-from vehicle_rules.tools import MAX_NUM_RESULTS, make_tools
+from vehicle_rules.tools import MAX_NUM_RESULTS, genie_tools, make_tools
 
 CHUNK = {"annex": None, "article": "5.2.47", "paragraph": None, "text": "Seat belts.", "vector_score": 0.81234}
 
@@ -77,3 +77,33 @@ def test_an_unknown_article_returns_an_error(by_name: dict) -> None:
     tools.article_chunks.return_value = []
     assert "in annex VIII" in json.loads(by_name["get_article"].run("999", "VIII"))["error"]
     assert "give the annex" in json.loads(by_name["get_article"].run("40"))["error"]
+
+
+@pytest.fixture
+def genie(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    """Return a fake MCP client with one tool, in place of the real one."""
+    definition = MagicMock(description="Ask Genie.", inputSchema={"type": "object"})
+    definition.name = "query_space"
+    client = MagicMock()
+    client.list_tools.return_value = [definition]
+    monkeypatch.setattr(tools, "DatabricksMCPClient", MagicMock(return_value=client))
+    return client
+
+
+def test_a_genie_tool_keeps_the_definition_of_its_server(genie: MagicMock) -> None:
+    """The model sees the name, description and schema that the MCP server gives."""
+    tool = genie_tools(MagicMock(), MagicMock(config=MagicMock(host="https://host/")))[0]
+    assert tool.spec["function"] == {
+        "name": "query_space",
+        "description": "Ask Genie.",
+        "parameters": {"type": "object"},
+    }
+
+
+@pytest.mark.parametrize(("is_error", "expected"), [(False, "1,234"), (True, '{"error": "1,234"}')])
+def test_a_genie_call_returns_its_text_and_marks_an_error(genie: MagicMock, is_error: bool, expected: str) -> None:
+    """An error from the server reaches the model as one."""
+    genie.call_tool.return_value = MagicMock(content=[MagicMock(text="1,234")], isError=is_error)
+    tool = genie_tools(MagicMock(), MagicMock(config=MagicMock(host="https://host/")))[0]
+    assert tool.run(query="How many?") == expected
+    genie.call_tool.assert_called_once_with("query_space", {"query": "How many?"})
