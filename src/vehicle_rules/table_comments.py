@@ -15,9 +15,7 @@ from pyspark.sql import SparkSession
 
 from vehicle_rules.config import get_env, load_config
 from vehicle_rules.ingest import spark_session
-
-VEHICLES_TABLE = "rdw_registered_vehicles"
-FUEL_TABLE = "rdw_registered_vehicles_fuel"
+from vehicle_rules.vehicles import FUEL_TABLE, VEHICLES_TABLE
 
 TABLE_COMMENTS = {
     VEHICLES_TABLE: (
