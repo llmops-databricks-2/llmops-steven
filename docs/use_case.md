@@ -65,7 +65,7 @@ Possible extensions: the two Dutch laws that chapter 5 links to most, in the sam
 - **Retrieval.** pgvector in Lakebase over the summaries, combined with Dutch full-text search and filtered on the extracted conditions.
 - **Agent.** Tools for the plate lookup and for article search and lookup. It asks follow-up questions about equipment, and conversation memory lives in Lakebase.
 - **Evaluation.** See below.
-- **Deployment and monitoring.** A serving endpoint with tracing, with plates masked in traces. Each new version of the regulation triggers a re-index, the evaluation runs again, and the answers are compared with the previous version's.
+- **Deployment and monitoring.** A serving endpoint with tracing. Each new version of the regulation triggers a re-index, the evaluation runs again, and the answers are compared with the previous version's.
 
 ## A good answer
 
@@ -84,6 +84,22 @@ Possible extensions: the two Dutch laws that chapter 5 links to most, in the sam
 - Legal advice: the agent explains and cites the text, it doesn't decide cases.
 - EU and UNECE type-approval texts. Chapter 5 and Annex VIII hardly refer to them, and they matter mainly to manufacturers.
 - Vehicle recalls and APK defect statistics. Both were considered as use cases and dropped, because they're mostly structured lookups.
+
+## The plate lookup: what is still missing
+
+The RDW tables are not searched. They are a lookup: the agent fetches a plate's row and its fuel, and uses them to filter the search and to check the conditions of the articles it finds. As of week 2 only the search exists.
+
+| What | Detail | Week |
+|---|---|---|
+| Plate lookup tool | Reaches the Delta tables through a query on the SQL warehouse | 3 |
+| Vehicle type labels | The chunks say `Passenger cars` and RDW says `Personenauto`, so the lookup needs a mapping before its vehicle type can fill the filter | 3 |
+| Other vehicles | `rdw_registered_vehicles` holds only passenger cars, 9.7M of the 16.9M vehicles in the register. For the plate of a van or a motorcycle the agent must say that it does not know the vehicle, not guess | 3 |
+| The date that counts | Conditions on being put into service use `first_admission_date`, not `first_registration_date_nl` (article 2.2) | 3 |
+| Article numbers | A question that names an article needs a lookup on `article` as a second tool: search does not find it (`docs/week-2.md`) | 3 |
+| Conditions per chunk | The batch LLM step that extracts what each paragraph applies to has not been built. Until it has, the agent reads date ranges from the legal text, and search cannot filter on them. It costs an LLM call per paragraph, so wait until the evaluation shows it is needed; a regex may cover the first-use dates | 4 or later |
+| Lakebase copy of the RDW tables | Only if the warehouse query is too slow, since a copy of 9.7M rows costs storage | Probably never |
+
+The weeks follow the code of lectures 3 (tools and MCP) and 4 (tracing, the agent, evaluation). Check them against the homework of those weeks.
 
 ## Open questions
 
