@@ -101,6 +101,8 @@ suspension after five idle minutes. Creating extra branches or computes can incr
   RDW lakehouse: exported there to Parquet, uploaded with `databricks fs cp` to
   `vehicle_rules_files/rdw/2026-10-15/`, and loaded with
   `CREATE TABLE … AS SELECT * EXCEPT (_rescued_data) FROM read_files(…, format => 'parquet')`.
+  The unscheduled `table_comments` job of the bundle sets their comments
+  (`src/vehicle_rules/table_comments.py`): run it again after a reload.
 - `lecture_1/`, `lecture_2/` and so on, when you add them: copy a lecture's folder from the course
   code as it is, to the root of this repo, where its notebooks find `project_config.yml` one level up.
   Commit it with the hooks installed (below): the first commit stops once, after the hooks have
