@@ -6,9 +6,9 @@ The homework: identify the tools of the use case, sketch the orchestration, conn
 |---|---|---|
 | 01 | Identify the tools: inputs, outputs, identity, local function or MCP | Design: see below |
 | 02 | Sketch the orchestration: fixed steps, model choices, stopping conditions, failure paths | Design: see below |
-| 03 | Connect and test the tools, with custom functions and Genie through MCP | To do |
-| 04 | Save session history in Lakebase, load it on the next turn, show that a second session is separate | To do |
-| 05 | Submit through the pull-request process: implementation, design choices, evidence, limitations | To do |
+| 03 | Connect and test the tools, with custom functions and Genie through MCP | Done: see [Evidence](#evidence) |
+| 04 | Save session history in Lakebase, load it on the next turn, show that a second session is separate | Done: see [Evidence](#evidence) |
+| 05 | Submit through the pull-request process: implementation, design choices, evidence, limitations | Open: this document and pull request #4 |
 
 ## What the agent does
 
@@ -92,6 +92,34 @@ Without a plate, the agent answers in general and lists the conditions, then inv
 | Outside the regulation: traffic rules, tax, insurance | Says so instead of guessing |
 | A tool fails or gets invalid arguments | Returns a clear error to the model, which may retry or say what failed |
 | Iteration limit reached | Says that it could not finish |
+
+## Evidence
+
+`notebooks/week_3_agent.py` reproduces this: 15 questions, in about three minutes. The answers below were read against the articles. The tools were first tested on their own: the plate lookup, `search_regulations` and `get_article` on real data, and Genie through MCP, where 9,005 and 8,275 cars match direct SQL.
+
+| Question | Tools the model called | Result |
+|---|---|---|
+| Tinted front side windows | Search | Correct: 55%, not checked at the APK |
+| A car from 1987, seat belts in the back, no plate | Search | Correct conclusion, no invitation to give a plate |
+| Rust on a self-supporting body | Search, `get_article` | 2E is correct. "About 30% loss of material thickness" is not in Annex VIII, Articles 5, 6, 7 or 18 |
+| First admission of an imported car | Search, `get_article` | Follows Annex II |
+| Windscreen in the driver's field of view | Search | The limits follow Annex VIII, Articles 93 and 98 |
+| Maximum noise level | Search | Follows Article 5.2.11 |
+| What the APK checks on a petrol car's exhaust | Search, `get_article` | Plausible, not checked in every detail |
+| What does article 5.2.47 require? | `get_article` | Correct but for one date: 1 October 1990 instead of after 31 December 1989 |
+| An unknown plate | Search | States the rules, and asks for what it does not know |
+| What does article 999 require? | Search, `get_article` | Says that it does not exist, after four tool calls |
+| Road tax | None | Declines: outside the regulation |
+| Petrol cars from 1987 | Genie | 8,275, which matches direct SQL |
+| Seat belts in the back, with a plate | Search | **Wrong**: see below |
+| A follow-up in the same session | None | Correct date, from the session |
+| The same follow-up in a new session | None | Does not know the car |
+
+**Memory.** On Postgres, with two made-up owners, a session returns its messages in order, with tool calls intact. A second session is separate, another owner reads nothing, and a write to another owner's session is refused.
+
+**The model does not apply the conditions reliably.** This is the main finding. For a five-seat car of 1987, whose first admission date is in the 1971 to 1989 band of article 5.2.47, rear belts are not required. Across eight runs of that question the answer was right four times. Every run found the article and quoted paragraph 3 correctly. The wrong runs then read "in so far as these adjoin a door" and skipped "next to that position", often reasoning from what a typical car has instead of the facts given. So retrieval works, and the failure is in applying the text. `temperature=0` did not make the answers repeatable, and a prompt rule to apply a condition as written did not fix it.
+
+An answer can also add details that the article does not contain, as with the rust and the date above. **This agent is not safe for real owners yet.** Tuning it on these questions would only fit them, so the week 4 evaluation should measure this across many questions. Conditions applied by code, as in the batch step of `docs/use_case.md`, are the likely fix.
 
 ## Open points
 
