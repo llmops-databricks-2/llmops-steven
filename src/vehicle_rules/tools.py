@@ -57,7 +57,8 @@ SEARCH_SPEC = _spec(
 
 ARTICLE_SPEC = _spec(
     "get_article",
-    "Read one article of the regulation in full, by its number. Use it for an article the user names, or one that "
+    "Read one article of the regulation in full, by its number. If the user names an article, call this first. Use "
+    "it too for an article that "
     'another article refers to, such as "Annex VIII, Article 40". Not for the definitions of article 1.1: find those '
     "with search_regulations.",
     {
@@ -149,8 +150,11 @@ def make_tools(
         """Return an article. Only article 1.1 is several chunks, one per definition: too long to return whole."""
         chunks = article_chunks(conn, config, article, annex)
         if not chunks:
-            hint = f" in annex {annex}" if annex else ". If it is in an annex, give the annex too"
-            return tool_error(f"There is no translated article {article}{hint}.")
+            place = f"{article} in annex {annex}" if annex else f"{article} outside the annexes"
+            return tool_error(
+                f"There is no translated article {place}. Do not search for it: if you know its annex, give it, "
+                "and otherwise tell the owner that you cannot find this article."
+            )
         if len(chunks) > 1:
             return tool_error(
                 f"Article {article} is too long to read whole. Use search_regulations to find a definition."

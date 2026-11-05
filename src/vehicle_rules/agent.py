@@ -92,7 +92,8 @@ class VehicleRulesAgent:
     def _ask(self, messages: list[Message]) -> Any:  # noqa: ANN401
         """Return the model's reply, which is an answer or a request for tool calls."""
         specs = [tool.spec for tool in self.tools.values()]
-        return self.client.chat.completions.create(model=self.model, messages=messages, tools=specs).choices[0].message
+        response = self.client.chat.completions.create(model=self.model, messages=messages, tools=specs, temperature=0)
+        return response.choices[0].message
 
     def _result(self, call: Any) -> Message:  # noqa: ANN401
         """Run a tool call and return its result, which is an error if anything went wrong."""

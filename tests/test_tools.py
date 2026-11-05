@@ -76,7 +76,7 @@ def test_an_unknown_article_returns_an_error(by_name: dict) -> None:
     """Not found is an answer the model can use, in or outside an annex."""
     tools.article_chunks.return_value = []
     assert "in annex VIII" in json.loads(by_name["get_article"].run("999", "VIII"))["error"]
-    assert "give the annex" in json.loads(by_name["get_article"].run("40"))["error"]
+    assert "Do not search for it" in json.loads(by_name["get_article"].run("40"))["error"]
 
 
 @pytest.fixture
