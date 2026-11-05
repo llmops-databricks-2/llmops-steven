@@ -1,4 +1,4 @@
-"""Search the chunks in Postgres: by meaning, or by meaning and keywords together.
+"""Search the chunks in Postgres, by meaning or by meaning and keywords together, or read one article.
 
 Both searches read the synced table, a copy of regulation_chunks, so nothing here writes. They are exact: with
 no vector index they score every chunk of a granularity, which is fast enough at about 5,000 chunks and means
@@ -61,6 +61,15 @@ _HYBRID = f"""
 """
 
 
+# An article at article granularity is one chunk, except article 1.1, which has one per definition.
+_ARTICLE = """
+    SELECT id, annex, article, paragraph, text
+    FROM {table}
+    WHERE granularity = 'article' AND article = %(article)s AND annex IS NOT DISTINCT FROM %(annex)s
+    ORDER BY id
+"""
+
+
 def connect(config: ProjectConfig, workspace: WorkspaceClient) -> psycopg.Connection:
     """Connect to the project's database as the current identity, with a short-lived credential."""
     branch = f"projects/{config.lakebase_instance}/branches/production"
@@ -118,6 +127,13 @@ def hybrid(
         "limit": limit,
     }
     return _fetch(conn, config, _HYBRID, params)
+
+
+def article_chunks(
+    conn: psycopg.Connection, config: ProjectConfig, article: str, annex: str | None = None
+) -> list[dict[str, Any]]:
+    """Return the chunks of one article, in order: empty if it does not exist or has no translation."""
+    return _fetch(conn, config, _ARTICLE, {"article": article, "annex": annex})
 
 
 def _fetch(conn: psycopg.Connection, config: ProjectConfig, query: str, params: dict[str, Any]) -> list[dict[str, Any]]:

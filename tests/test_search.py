@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from vehicle_rules.config import ProjectConfig
-from vehicle_rules.search import hybrid, semantic
+from vehicle_rules.search import article_chunks, hybrid, semantic
 
 CONFIG = MagicMock(spec=ProjectConfig, db_schema="steven", synced_table="regulation_chunks_synced")
 EMBEDDING = [0.25, 0.5]
@@ -25,7 +25,11 @@ def run(search: Callable[..., list[dict[str, Any]]], *args: Any, **kwargs: Any) 
 
 @pytest.mark.parametrize(
     ("search", "args"),
-    [(semantic, (EMBEDDING, "article")), (hybrid, ("Tinted windows?", EMBEDDING, "article"))],
+    [
+        (semantic, (EMBEDDING, "article")),
+        (hybrid, ("Tinted windows?", EMBEDDING, "article")),
+        (article_chunks, ("5.2.47",)),
+    ],
 )
 def test_a_search_reads_the_synced_table_and_supplies_every_parameter(search: Callable, args: tuple) -> None:
     """The table is filled in, and the query's named parameters are exactly those sent."""
