@@ -1,5 +1,6 @@
 """Finding a plate in a message, and looking up its car, without a workspace."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -49,15 +50,14 @@ def test_ordinary_text_is_not_a_plate(message: str) -> None:
     assert find_plate(message) is None
 
 
-def workspace(*rows: list[list[str]]) -> MagicMock:
-    """Return a workspace whose statements return the given rows, in turn, for the columns a and b."""
+def workspace(*rows: list[list[str]], columns: tuple[str, ...] = ("vehicle_type", "make")) -> MagicMock:
+    """Return a workspace whose statements return the given rows, in turn."""
     responses = []
     for data in rows:
+        names = columns if data and len(data[0]) == len(columns) else ("fuel_description",)
         response = MagicMock()
         response.status.state = StatementState.SUCCEEDED
-        response.manifest.schema.columns = [MagicMock(), MagicMock()]
-        response.manifest.schema.columns[0].name = "vehicle_type"
-        response.manifest.schema.columns[1].name = "make"
+        response.manifest.schema.columns = [SimpleNamespace(name=name) for name in names]
         response.result.data_array = data
         responses.append(response)
     client = MagicMock()
@@ -72,12 +72,12 @@ def test_an_unknown_plate_is_not_found() -> None:
     assert client.statement_execution.execute_statement.call_count == 1
 
 
-def test_a_car_comes_with_its_fuels_and_its_vehicle_type_in_the_regulation() -> None:
-    """The plate is a bound parameter, and the RDW's Dutch type maps to the regulation's."""
-    client = workspace([["Personenauto", "VOLVO"]], [["Benzine", "6"]])
+def test_a_car_comes_in_the_english_of_the_regulation() -> None:
+    """The plate is a bound parameter, and the register's Dutch becomes the regulation's words."""
+    client = workspace([["Personenauto", "VOLVO"]], [["Benzine"], ["Diesel"], ["Elektriciteit"]])
     car = lookup_car(MagicMock(full_schema_name="llmops_dev.steven"), client, "AB123C")
-    assert car["regulation_vehicle_type"] == "Passenger cars"
-    assert car["fuels"] == [{"vehicle_type": "Benzine", "make": "6"}]
+    assert car["vehicle_type"] == "Passenger cars"
+    assert car["fuels"] == ["Petrol", "Diesel", "Electricity"]
     first_call = client.statement_execution.execute_statement.call_args_list[0].kwargs
     assert "AB123C" not in first_call["statement"]
     assert first_call["parameters"][0].value == "AB123C"

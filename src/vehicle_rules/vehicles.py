@@ -33,8 +33,10 @@ PLATE_SHAPES = {
 # A plate with its dashes, or without them. Not with spaces: "in 19 am" would look like a plate.
 PLATE_CANDIDATE = re.compile(r"(?<![\w.-])(?:\w{1,4}-\w{1,4}-\w{1,4}|\w{6})(?![\w-]|\.\w)")
 
-# The regulation's name for each RDW vehicle type. The table holds only passenger cars.
-REGULATION_VEHICLE_TYPES = {"Personenauto": "Passenger cars"}
+# The register is in Dutch and the regulation's chunks in English, so the agent gets the regulation's words. A value
+# not listed here is the same in both, like Diesel, or passes as it is.
+VEHICLE_TYPES_IN_ENGLISH = {"Personenauto": "Passenger cars"}
+FUELS_IN_ENGLISH = {"Benzine": "Petrol", "Elektriciteit": "Electricity", "Waterstof": "Hydrogen"}
 
 # What the regulation's conditions can depend on.
 CAR_COLUMNS = (
@@ -53,7 +55,6 @@ CAR_COLUMNS = (
     "permitted_maximum_mass",
     "max_design_speed",
 )
-FUEL_COLUMNS = ("fuel_description", "emission_class")
 
 
 def normalize_plate(text: str) -> str | None:
@@ -73,20 +74,22 @@ def find_plate(message: str) -> str | None:
 
 
 def lookup_car(config: ProjectConfig, workspace: WorkspaceClient, plate: str) -> dict[str, Any] | None:
-    """Return a car's facts with its fuels and vehicle type in the regulation; None if the plate is not in the table."""
+    """Return a car's facts in English, with its fuels; None if the plate is not in the table."""
     columns = ", ".join(CAR_COLUMNS)
     cars = _query(config, workspace, f"SELECT {columns} FROM {{}}.{VEHICLES_TABLE} WHERE license_plate = :plate", plate)
     if not cars:
         return None
-    columns = ", ".join(FUEL_COLUMNS)
     fuels = _query(
         config,
         workspace,
-        f"SELECT {columns} FROM {{}}.{FUEL_TABLE} WHERE license_plate = :plate ORDER BY fuel_sequence_number",
+        f"SELECT fuel_description FROM {{}}.{FUEL_TABLE} WHERE license_plate = :plate ORDER BY fuel_sequence_number",
         plate,
     )
     car = cars[0]
-    return car | {"fuels": fuels, "regulation_vehicle_type": REGULATION_VEHICLE_TYPES.get(car["vehicle_type"])}
+    return car | {
+        "vehicle_type": VEHICLE_TYPES_IN_ENGLISH.get(car["vehicle_type"], car["vehicle_type"]),
+        "fuels": [FUELS_IN_ENGLISH.get(f["fuel_description"], f["fuel_description"]) for f in fuels],
+    }
 
 
 def _query(config: ProjectConfig, workspace: WorkspaceClient, statement: str, plate: str) -> list[dict[str, Any]]:
