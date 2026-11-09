@@ -1,0 +1,42 @@
+# The Genie space on the RDW tables, a side capability of the agent for questions about the fleet. In dev only,
+# since acc and prd do not hold these tables. Column meanings come from their Unity Catalog comments
+# (src/vehicle_rules/table_comments.py). Genie validates this strictly: an id is 32 lowercase hex characters.
+targets:
+  dev:
+    resources:
+      genie_spaces:
+        rdw_fleet:
+          title: rdw-fleet-steven
+          description: Questions about the passenger cars registered in the Netherlands.
+          warehouse_id: fd4639f83ff71fb7
+          serialized_space:
+            version: 2
+            config:
+              sample_questions:
+                - id: "10000000000000000000000000000001"
+                  question: ["How many cars were first admitted in 1987?"]
+                - id: "10000000000000000000000000000002"
+                  question: ["How many cars run on each fuel?"]
+            data_sources:
+              tables:
+                - identifier: llmops_dev.steven.rdw_registered_vehicles
+                - identifier: llmops_dev.steven.rdw_registered_vehicles_fuel
+            instructions:
+              text_instructions:
+                - id: "30000000000000000000000000000001"
+                  content:
+                    - "A car's age or year comes from first_admission_date, never first_registration_date_nl. "
+                    - "A hybrid has a row per fuel, so count cars with COUNT(DISTINCT license_plate). "
+                    - "Fuels are in Dutch: petrol is Benzine, electric is Elektriciteit, hydrogen is Waterstof."
+              example_question_sqls:
+                - id: "20000000000000000000000000000001"
+                  question: ["How many cars were first admitted in 1987?"]
+                  sql:
+                    - "SELECT COUNT(*) AS cars FROM llmops_dev.steven.rdw_registered_vehicles "
+                    - "WHERE YEAR(first_admission_date) = 1987"
+                - id: "20000000000000000000000000000002"
+                  question: ["How many cars run on each fuel?"]
+                  sql:
+                    - "SELECT fuel_description, COUNT(DISTINCT license_plate) AS cars "
+                    - "FROM llmops_dev.steven.rdw_registered_vehicles_fuel "
+                    - "GROUP BY fuel_description ORDER BY cars DESC"

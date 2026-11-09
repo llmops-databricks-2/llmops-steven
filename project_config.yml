@@ -21,6 +21,8 @@ dev:
   experiment_path: "/llmops/steven-dev"
   # Your provisioned Lakebase project.
   lakebase_instance: "lb-llmops-steven"
+  # The Genie space of the bundle (resources/genie_space.yml), in dev only.
+  genie_space_id: "01f1d91368091f8baeb9f0733d06b6e0"
 
 # Acceptance: your schema in the acceptance catalog, written by your deploys; you read it.
 acc:
