@@ -1,0 +1,22 @@
+# The table comments job: one serverless notebook task that sets the comments on the RDW tables in your
+# schema of the target's catalog (src/vehicle_rules/table_comments.py). It has no schedule: run it by hand,
+# after changing the comments or reloading a table. It changes comments only, never the data.
+resources:
+  jobs:
+    table_comments:
+      name: job-table-comments-steven-${bundle.target}
+      budget_policy_id: "5574b9a2-99e5-3e77-8a69-ba40282a9a04"
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "6"
+            dependencies:
+              - ../dist/*.whl
+
+      tasks:
+        - task_key: table_comments
+          environment_key: default
+          notebook_task:
+            notebook_path: deployment_notebooks/table_comments.py
+            base_parameters:
+              env: ${bundle.target}
